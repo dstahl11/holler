@@ -36,6 +36,18 @@ if DRY_RUN:
     log.warning("HOLLER_DRY_RUN is set — broadcasts are simulated, nothing will play")
 
 
+@app.middleware("http")
+async def no_stale_cache(request, call_next):
+    """Force revalidation so phones pick up UI/audio changes immediately.
+
+    Without this, browsers heuristically cache the static files and keep
+    running old JS after an upgrade. ETag 304s keep it cheap on the LAN.
+    """
+    response = await call_next(request)
+    response.headers.setdefault("Cache-Control", "no-cache")
+    return response
+
+
 def _apply_config(new_cfg) -> None:
     global cfg
     cfg = new_cfg
@@ -68,7 +80,10 @@ def list_presets():
 
 @app.get("/api/health")
 def health():
-    return {"ok": True, "speaker_reachable": DRY_RUN or caster.speaker_reachable()}
+    devices = {
+        d.name: (DRY_RUN or caster.device_reachable(d)) for d in cfg.enabled_devices()
+    }
+    return {"ok": True, "speaker_reachable": any(devices.values()), "devices": devices}
 
 
 @app.post("/api/broadcast/{preset_id}")
@@ -88,15 +103,27 @@ async def broadcast(preset_id: str, request: Request, x_pin: str | None = Header
     content_type = AUDIO_CONTENT_TYPES[audio_file.suffix.lower()]
 
     try:
-        elapsed = await caster.broadcast(audio_url, content_type)
+        results, elapsed = await caster.broadcast(audio_url, content_type)
     except BroadcastError as e:
         if str(e) == "busy":
             raise HTTPException(status_code=429, detail="A broadcast is already playing")
-        log.error("broadcast '%s' failed: %s", preset_id, e)
+        raise HTTPException(status_code=502, detail=str(e))
+
+    delivered = sum(1 for r in results.values() if r["ok"])
+    if delivered == 0:
+        log.error("broadcast '%s' failed on all speakers: %s", preset_id, results)
         raise HTTPException(status_code=502, detail="Speaker unreachable or cast failed")
 
-    log.info("broadcast '%s' delivered in %.1fs", preset_id, elapsed)
-    return {"ok": True, "preset": preset_id, "elapsed": round(elapsed, 1)}
+    log.info("broadcast '%s' delivered to %d/%d speakers in %.1fs",
+             preset_id, delivered, len(results), elapsed)
+    return {
+        "ok": True,
+        "preset": preset_id,
+        "delivered": delivered,
+        "total": len(results),
+        "results": results,
+        "elapsed": round(elapsed, 1),
+    }
 
 
 # ---- Admin --------------------------------------------------------------

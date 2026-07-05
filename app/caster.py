@@ -1,4 +1,8 @@
-"""Chromecast broadcast: capture volume -> force loud -> cast -> restore."""
+"""Chromecast broadcast: capture volume -> force loud -> cast -> restore.
+
+Fans out to every enabled device in parallel; each speaker gets its own
+volume capture/restore.
+"""
 
 from __future__ import annotations
 
@@ -9,7 +13,7 @@ import socket
 import time
 from uuid import UUID
 
-from .config import Config
+from .config import Config, Device
 
 log = logging.getLogger("holler.caster")
 
@@ -17,7 +21,7 @@ DRY_RUN = os.environ.get("HOLLER_DRY_RUN", "") not in ("", "0", "false")
 
 
 class BroadcastError(Exception):
-    """Raised when a broadcast could not be delivered."""
+    """Raised when a broadcast could not be delivered at all."""
 
 
 class Caster:
@@ -25,66 +29,82 @@ class Caster:
         self.cfg = cfg
         self._lock = asyncio.Lock()
 
-    @property
-    def busy(self) -> bool:
-        return self._lock.locked()
-
     def detect_advertise_host(self) -> str:
-        """LAN IP the speaker should use to fetch audio from this service."""
+        """LAN IP the speakers should use to fetch audio from this service."""
         if self.cfg.advertise_host:
             return self.cfg.advertise_host
+        devices = self.cfg.enabled_devices()
+        probe = devices[0].host if devices else "8.8.8.8"
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
-            s.connect((self.cfg.host, 8009))
+            s.connect((probe, 8009))
             return s.getsockname()[0]
         finally:
             s.close()
 
-    def speaker_reachable(self) -> bool:
+    @staticmethod
+    def device_reachable(device: Device) -> bool:
         try:
-            with socket.create_connection((self.cfg.host, 8009), timeout=2):
+            with socket.create_connection((device.host, 8009), timeout=2):
                 return True
         except OSError:
             return False
 
-    async def broadcast(self, audio_url: str, content_type: str) -> float:
-        """Serialized broadcast; returns elapsed seconds. Raises BroadcastError."""
+    async def broadcast(self, audio_url: str, content_type: str) -> tuple[dict, float]:
+        """Serialized broadcast to all enabled devices.
+
+        Returns ({device_name: {"ok": bool, "error": str?}}, elapsed_seconds).
+        Raises BroadcastError("busy") if one is in flight, or with a message
+        if no devices are enabled.
+        """
+        devices = self.cfg.enabled_devices()
+        if not devices:
+            raise BroadcastError("no speakers enabled — add one in /admin")
         if self._lock.locked():
             raise BroadcastError("busy")
         async with self._lock:
             start = time.monotonic()
             if DRY_RUN:
-                log.info("DRY RUN: would broadcast %s", audio_url)
+                log.info("DRY RUN: would broadcast %s to %s",
+                         audio_url, [d.name for d in devices])
                 await asyncio.sleep(1.0)
-                return time.monotonic() - start
-            attempts = 1 + max(0, self.cfg.retries)
-            last_err: Exception | None = None
-            for attempt in range(attempts):
-                try:
-                    await asyncio.to_thread(self._broadcast_sync, audio_url, content_type)
-                    return time.monotonic() - start
-                except Exception as e:  # noqa: BLE001 - surfaced to the app as failure
-                    last_err = e
-                    log.warning("broadcast attempt %d/%d failed: %s", attempt + 1, attempts, e)
-            raise BroadcastError(str(last_err))
+                return {d.name: {"ok": True} for d in devices}, time.monotonic() - start
+            outcomes = await asyncio.gather(
+                *[asyncio.to_thread(self._broadcast_device, d, audio_url, content_type)
+                  for d in devices]
+            )
+            return dict(zip([d.name for d in devices], outcomes)), time.monotonic() - start
 
-    def _broadcast_sync(self, audio_url: str, content_type: str) -> None:
+    def _broadcast_device(self, device: Device, audio_url: str, content_type: str) -> dict:
+        attempts = 1 + max(0, self.cfg.retries)
+        last_err: Exception | None = None
+        for attempt in range(attempts):
+            try:
+                self._broadcast_sync(device, audio_url, content_type)
+                return {"ok": True}
+            except Exception as e:  # noqa: BLE001 - surfaced per-device
+                last_err = e
+                log.warning("[%s] broadcast attempt %d/%d failed: %s",
+                            device.name, attempt + 1, attempts, e)
+        return {"ok": False, "error": str(last_err)}
+
+    def _broadcast_sync(self, device: Device, audio_url: str, content_type: str) -> None:
         import pychromecast  # deferred: import spins up zeroconf machinery
 
         cfg = self.cfg
-        uuid = UUID(cfg.uuid) if cfg.uuid else None
+        uuid = UUID(device.uuid) if device.uuid else None
         cast = pychromecast.get_chromecast_from_host(
-            (cfg.host, 8009, uuid, None, cfg.friendly_name),
+            (device.host, 8009, uuid, None, device.name),
             tries=1,
             timeout=cfg.connect_timeout,
         )
         try:
             cast.wait(timeout=cfg.connect_timeout)
             if cast.status is None:
-                raise BroadcastError(f"speaker at {cfg.host} did not respond")
+                raise BroadcastError(f"speaker at {device.host} did not respond")
 
             prev_volume = cast.status.volume_level
-            log.info("connected to %s (volume %.2f)", cfg.host, prev_volume)
+            log.info("[%s] connected (volume %.2f)", device.name, prev_volume)
             try:
                 cast.set_volume(cfg.volume)
                 time.sleep(0.4)  # let the volume change land before audio starts
@@ -108,7 +128,8 @@ class Caster:
                 try:
                     cast.set_volume(prev_volume)
                 except Exception:  # noqa: BLE001
-                    log.exception("failed to restore volume to %.2f", prev_volume)
+                    log.exception("[%s] failed to restore volume to %.2f",
+                                  device.name, prev_volume)
         finally:
             try:
                 cast.disconnect(timeout=3)

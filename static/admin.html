@@ -47,8 +47,18 @@
       width: 100%; text-align: left; margin-top: 8px; background: #1a1023;
       border: 1px solid #3a2a52; font-weight: 500; line-height: 1.4;
     }
-    .device-pick.selected { border-color: #ff9f43; }
+    .device-pick:disabled { opacity: 0.45; }
     .device-pick small { color: #9a8fb0; display: block; font-weight: 400; }
+    .device-row {
+      display: flex; align-items: center; gap: 12px;
+      border: 1px solid #3a2a52; border-radius: 14px;
+      padding: 12px 14px; margin-top: 10px;
+    }
+    .device-row .info { flex: 1; min-width: 0; }
+    .device-row .info b { display: block; font-size: 15px; }
+    .device-row .info small { color: #9a8fb0; }
+    .device-row input[type=checkbox] { width: 24px; height: 24px; accent-color: #ff9f43; }
+    .device-row button { padding: 8px 6px; }
     .preset-card { border: 1px solid #3a2a52; border-radius: 14px; padding: 14px; margin-top: 12px; }
     .preset-card .row { margin-bottom: 4px; }
     .preset-actions { display: flex; gap: 8px; margin-top: 10px; align-items: center; flex-wrap: wrap; }
@@ -85,17 +95,15 @@
 
   <main>
     <section id="sec-device">
-      <h2>Speaker</h2>
-      <div class="row">
+      <h2>Speakers</h2>
+      <div id="device-list"></div>
+      <div class="row" style="margin-top:12px">
         <button id="scan" class="fixed">🔍 Scan network</button>
+        <button id="add-ip" class="fixed">＋ Add by IP</button>
         <span id="scan-status" class="badge"></span>
       </div>
-      <div id="devices"></div>
-      <label>IP address</label>
-      <input type="text" id="dev-host" placeholder="192.168.1.x" autocapitalize="off">
-      <label>Name</label>
-      <input type="text" id="dev-name" placeholder="Kid's room speaker">
-      <input type="hidden" id="dev-uuid">
+      <div id="scan-results"></div>
+      <p class="hint">Broadcasts play on every speaker that's switched on — check two to holler in both rooms at once. Scan finds Google/Nest devices; tap one to add it.</p>
     </section>
 
     <section>

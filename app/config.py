@@ -43,10 +43,16 @@ class Preset:
 
 
 @dataclass
-class Config:
+class Device:
+    name: str
     host: str
-    uuid: str | None
-    friendly_name: str
+    uuid: str | None = None
+    enabled: bool = True
+
+
+@dataclass
+class Config:
+    devices: list["Device"]
     volume: float
     connect_timeout: float
     play_timeout: float
@@ -62,9 +68,30 @@ class Config:
     def preset(self, preset_id: str) -> Preset | None:
         return next((p for p in self.presets if p.id == preset_id), None)
 
+    def enabled_devices(self) -> list[Device]:
+        return [d for d in self.devices if d.enabled and d.host]
+
 
 def parse_config(raw: dict) -> Config:
-    device = raw.get("device") or {}
+    devices_raw = raw.get("devices")
+    if devices_raw is None and raw.get("device"):
+        # migrate pre-multi-speaker single `device:` form
+        d = raw["device"]
+        devices_raw = [{
+            "name": d.get("friendly_name", "Speaker"),
+            "host": d.get("host", ""),
+            "uuid": d.get("uuid", ""),
+        }]
+    devices = [
+        Device(
+            name=str(d.get("name") or d.get("host") or "Speaker"),
+            host=str(d.get("host", "")),
+            uuid=str(d.get("uuid") or "") or None,
+            enabled=bool(d.get("enabled", True)),
+        )
+        for d in devices_raw or []
+    ]
+
     broadcast = raw.get("broadcast") or {}
     security = raw.get("security") or {}
     tts = raw.get("tts") or {}
@@ -91,9 +118,7 @@ def parse_config(raw: dict) -> Config:
         raise ValueError("config defines no presets")
 
     return Config(
-        host=str(device.get("host", "")),
-        uuid=str(device.get("uuid") or "") or None,
-        friendly_name=str(device.get("friendly_name", "Speaker")),
+        devices=devices,
         volume=min(1.0, max(0.0, float(broadcast.get("volume", 1.0)))),
         connect_timeout=float(broadcast.get("connect_timeout", 7)),
         play_timeout=float(broadcast.get("play_timeout", 25)),
@@ -114,11 +139,10 @@ def load_config(path: Path = CONFIG_PATH) -> Config:
 
 def config_to_dict(cfg: Config) -> dict:
     return {
-        "device": {
-            "host": cfg.host,
-            "uuid": cfg.uuid or "",
-            "friendly_name": cfg.friendly_name,
-        },
+        "devices": [
+            {"name": d.name, "host": d.host, "uuid": d.uuid or "", "enabled": d.enabled}
+            for d in cfg.devices
+        ],
         "broadcast": {
             "volume": cfg.volume,
             "connect_timeout": cfg.connect_timeout,

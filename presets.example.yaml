@@ -3,13 +3,19 @@
 #
 #   cp presets.example.yaml presets.yaml
 
-device:
-  # Your speaker's IP — find it with `python scripts/discover.py` or the /admin
-  # scan button. Give it a DHCP reservation in your router so it never moves.
-  host: 192.168.1.50
-  # Optional but recommended (also from discovery):
-  uuid: ""
-  friendly_name: "Kid's room speaker"
+# Broadcasts play on every device with enabled: true. Add speakers with the
+# /admin scan button, `python scripts/discover.py`, or by hand. Give each one
+# a DHCP reservation in your router so the IP never moves. uuid is optional
+# (captured automatically when added via scan).
+devices:
+  - name: "Kid's room speaker"
+    host: 192.168.1.50
+    uuid: ""
+    enabled: true
+  # - name: "Hallway speaker"
+  #   host: 192.168.1.51
+  #   uuid: ""
+  #   enabled: false
 
 broadcast:
   volume: 0.7         # 0.0–1.0, forced for the broadcast then restored

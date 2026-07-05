@@ -46,22 +46,48 @@ function slugify(label) {
   return id;
 }
 
-// ---- Speaker section ---------------------------------------------------
+// ---- Speakers section ----------------------------------------------------
 
-function renderDevices(devices) {
-  const box = $("devices");
+function renderDeviceList() {
+  const box = $("device-list");
+  box.innerHTML = "";
+  if (!config.devices.length) {
+    box.innerHTML = '<p class="hint">No speakers yet — scan the network below.</p>';
+    return;
+  }
+  for (const d of config.devices) {
+    const row = document.createElement("div");
+    row.className = "device-row";
+    row.innerHTML = `
+      <input type="checkbox" ${d.enabled ? "checked" : ""} aria-label="Broadcast to ${d.name}">
+      <div class="info"><b>${d.name}</b><small>${d.host}</small></div>
+      <button class="danger">Remove</button>`;
+    row.querySelector("input").addEventListener("change", (e) => {
+      d.enabled = e.target.checked;
+    });
+    row.querySelector("button").addEventListener("click", () => {
+      if (!confirm(`Remove “${d.name}”?`)) return;
+      config.devices = config.devices.filter((x) => x !== d);
+      renderDeviceList();
+    });
+    box.appendChild(row);
+  }
+}
+
+function renderScanResults(devices) {
+  const box = $("scan-results");
   box.innerHTML = "";
   for (const d of devices) {
+    const known = config.devices.some((x) => x.host === d.host || (d.uuid && x.uuid === d.uuid));
     const b = document.createElement("button");
-    b.className = "device-pick" + (d.host === config.device.host ? " selected" : "");
-    b.innerHTML = `${d.name}<small>${d.host} · ${d.model}</small>`;
+    b.className = "device-pick";
+    b.disabled = known;
+    b.innerHTML = `${d.name}<small>${d.host} · ${d.model}${known ? " · already added" : ""}</small>`;
     b.addEventListener("click", () => {
-      config.device = { host: d.host, uuid: d.uuid, friendly_name: d.name };
-      $("dev-host").value = d.host;
-      $("dev-name").value = d.name;
-      $("dev-uuid").value = d.uuid;
-      box.querySelectorAll(".device-pick").forEach((x) => x.classList.remove("selected"));
-      b.classList.add("selected");
+      config.devices.push({ name: d.name, host: d.host, uuid: d.uuid, enabled: true });
+      b.disabled = true;
+      b.querySelector("small").textContent += " · added ✓";
+      renderDeviceList();
     });
     box.appendChild(b);
   }
@@ -73,12 +99,20 @@ $("scan").addEventListener("click", async () => {
   try {
     const { devices } = await api("POST", "/api/admin/scan");
     $("scan-status").textContent = devices.length ? `${devices.length} found` : "none found — speaker plugged in?";
-    renderDevices(devices);
+    renderScanResults(devices);
   } catch (e) {
     showToast(e.message, true);
     $("scan-status").textContent = "";
   }
   $("scan").disabled = false;
+});
+
+$("add-ip").addEventListener("click", () => {
+  const host = prompt("Speaker IP address:");
+  if (!host) return;
+  const name = prompt("Name for this speaker:", host) || host;
+  config.devices.push({ name, host: host.trim(), uuid: "", enabled: true });
+  renderDeviceList();
 });
 
 // ---- Presets section -----------------------------------------------------
@@ -154,9 +188,6 @@ $("volume").addEventListener("input", () => {
 });
 
 function collect() {
-  config.device.host = $("dev-host").value.trim();
-  config.device.friendly_name = $("dev-name").value.trim() || "Speaker";
-  config.device.uuid = $("dev-uuid").value.trim();
   config.broadcast.volume = parseFloat($("volume").value);
   config.security.pin = $("pin").value.trim();
   config.security.admin_pin = $("admin-pin").value.trim();
@@ -201,9 +232,7 @@ async function init() {
     const data = await api("GET", "/api/admin/config");
     config = data.config;
     presetsStatus = data.presets_status;
-    $("dev-host").value = config.device.host;
-    $("dev-name").value = config.device.friendly_name;
-    $("dev-uuid").value = config.device.uuid;
+    renderDeviceList();
     $("volume").value = config.broadcast.volume;
     $("volume-val").textContent = Math.round(config.broadcast.volume * 100) + "%";
     $("pin").value = config.security.pin;

@@ -83,7 +83,7 @@ async function sendPreset(btn, preset) {
   haptic(30);
   setButtonState(btn, "sending");
 
-  let ok = false, detail = "";
+  let ok = false, detail = "", delivered = 0, total = 0;
   try {
     const res = await fetch(`/api/broadcast/${encodeURIComponent(preset.id)}`, {
       method: "POST",
@@ -98,14 +98,19 @@ async function sendPreset(btn, preset) {
     const body = await res.json().catch(() => ({}));
     ok = res.ok;
     detail = body.detail || "";
+    delivered = body.delivered || 0;
+    total = body.total || 0;
   } catch (e) {
     detail = "Network error";
   }
 
   if (ok) {
     haptic([20, 40, 20]);
-    setButtonState(btn, "sent", "Sent ✓");
-    showToast(`“${preset.label}” sent ✓`);
+    const partial = total > 1 && delivered < total;
+    setButtonState(btn, "sent", partial ? `Sent ${delivered}/${total} ✓` : "Sent ✓");
+    showToast(partial
+      ? `“${preset.label}” sent to ${delivered} of ${total} speakers`
+      : `“${preset.label}” sent ✓`, partial);
   } else {
     haptic(200);
     setButtonState(btn, "failed", "Failed — tap to retry");

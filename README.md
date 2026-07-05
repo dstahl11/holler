@@ -51,9 +51,13 @@ Set `HOLLER_DRY_RUN=1` to simulate casts while you play with the UI.
 Open **`http://<server>:8000/admin`** (or the ⚙︎ gear in the app):
 
 1. Tap **Scan network** — every Cast device in the house shows up.
-2. Tap your kid's speaker. Done.
+2. Tap your kid's speaker to add it. Done.
 
-Give the speaker a **DHCP reservation** in your router so its IP never moves.
+Add as many speakers as you like — broadcasts play on **every speaker that's
+switched on** in the list (kid's room + hallway, two kids' rooms, …), each with
+its own volume capture/restore. Toggle them without removing.
+
+Give each speaker a **DHCP reservation** in your router so its IP never moves.
 (CLI alternative: `python scripts/discover.py`, then edit `presets.yaml`.)
 
 ### 3. Make it say your kid's name
@@ -61,9 +65,12 @@ Give the speaker a **DHCP reservation** in your router so its IP never moves.
 Still in `/admin`: edit the message text on each card (the examples say "Sam"),
 then **Save changes** — audio re-renders automatically. TTS engines:
 
-- **macOS `say`** — used automatically when running on a Mac.
-- **Piper** (self-hosted neural TTS) — bundled in the Docker image, works out
-  of the box.
+- **macOS `say`** — used automatically when running bare on a Mac. Not
+  available inside Docker (Linux) — Piper takes over there.
+- **Piper** (self-hosted neural TTS) — bundled in the Docker image with the
+  `en_US-lessac-medium` voice, works out of the box. Audio rendered earlier on
+  a Mac keeps working after a move to Docker — they're just WAV files; only
+  *future* wording changes render with Piper.
 - **Recorded parent voice** — the one kids actually respond to. Record each
   phrase on your phone, drop the files at `audio/raw/<preset-id>.m4a` (any
   format), Save/re-render. Recordings always win over TTS.
@@ -114,8 +121,7 @@ kept as `presets.yaml.bak`), so hand-editing the YAML still works too.
 
 | Key | Meaning |
 |-----|---------|
-| `device.host` | Speaker IP (pin it with a DHCP reservation) |
-| `device.uuid` | Optional; captured automatically when you pick from a scan |
+| `devices[]` | `name`, `host`, optional `uuid`, `enabled` — broadcasts hit every enabled one |
 | `broadcast.volume` | 0.0–1.0 forced during broadcast |
 | `broadcast.play_timeout` | Max seconds to wait before restoring volume |
 | `broadcast.advertise_host` | LAN IP the speaker fetches audio from; auto-detected if empty |
