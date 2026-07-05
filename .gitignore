@@ -15,3 +15,5 @@ audio/*
 
 .playwright-mcp/
 voices/
+docker-compose.override.yml
+.env

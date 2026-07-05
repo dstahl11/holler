@@ -23,4 +23,4 @@ COPY presets.example.yaml ./presets.yaml
 RUN mkdir -p ./audio
 
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${HOLLER_PORT:-8000}"]

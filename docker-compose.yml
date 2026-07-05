@@ -7,7 +7,8 @@ services:
     # the Docker host's LAN IP — no port-mapping/advertise_host gymnastics.
     network_mode: host
     environment:
-      - HOLLER_PORT=8000
+      # Override with HOLLER_PORT=xxxx in a .env file next to this compose file
+      - HOLLER_PORT=${HOLLER_PORT:-8000}
     volumes:
       # Read-write so the /admin page can save config and render audio;
       # your presets.yaml and audio live on the host, surviving rebuilds.
