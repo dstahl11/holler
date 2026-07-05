@@ -6,6 +6,7 @@ let toastTimer = null;
 let config = null;        // working copy, shape of presets.yaml
 let dirtyTts = new Set(); // preset ids whose audio must re-render on save
 let presetsStatus = {};   // id -> has rendered audio
+let voiceBaseline = "";   // tts settings at load/last render — changing them re-renders all
 
 function showToast(msg, isError) {
   toast.textContent = msg;
@@ -207,8 +208,9 @@ $("save").addEventListener("click", async () => {
     if (config.security.admin_pin) {
       sessionStorage.setItem("holler_admin_pin", config.security.admin_pin);
     }
+    const voiceChanged = JSON.stringify(config.tts) !== voiceBaseline;
     const needRender = config.presets
-      .filter((p) => dirtyTts.has(p.id) || presetsStatus[p.id] === false)
+      .filter((p) => voiceChanged || dirtyTts.has(p.id) || presetsStatus[p.id] === false)
       .map((p) => p.id);
     if (needRender.length) {
       btn.textContent = `Rendering audio (${needRender.length})…`;
@@ -217,6 +219,7 @@ $("save").addEventListener("click", async () => {
       if (failed.length) throw new Error(`Render failed: ${failed[0][0]} — ${failed[0][1].error}`);
       needRender.forEach((id) => { presetsStatus[id] = true; });
       dirtyTts.clear();
+      voiceBaseline = JSON.stringify(config.tts);
       renderPresets();
     }
     showToast("Saved ✓");
@@ -253,6 +256,7 @@ async function init() {
       sel.value = data.piper_models.includes(config.tts.piper_model) ? config.tts.piper_model : "";
       $("piper-voice-wrap").style.display = "";
     }
+    voiceBaseline = JSON.stringify(config.tts);
     if (!data.engines.length) {
       showToast("No TTS engine on server — install piper or use recordings", true);
     }
