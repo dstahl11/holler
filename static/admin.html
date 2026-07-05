@@ -123,6 +123,10 @@
       </select>
       <label>Voice name (for macOS say — blank = system default)</label>
       <input type="text" id="tts-voice" placeholder="Samantha">
+      <div id="piper-voice-wrap" style="display:none">
+        <label>Piper voice (models in <code>voices/</code> — add more with <code>python -m piper.download_voices</code>)</label>
+        <select id="tts-piper-model"></select>
+      </div>
       <p class="hint">Best option: record the phrases in your own voice on your phone, drop them in <code>audio/raw/&lt;id&gt;.m4a</code>, and re-render — a real parent voice beats any TTS.</p>
     </section>
 

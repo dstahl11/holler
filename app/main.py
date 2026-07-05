@@ -134,6 +134,7 @@ def admin_get_config(x_admin_pin: str | None = Header(default=None)):
     return {
         "config": config_to_dict(cfg),
         "engines": audio_render.available_engines(),
+        "piper_models": sorted(str(p) for p in (ROOT / "voices").glob("*.onnx")),
         "dry_run": DRY_RUN,
         "presets_status": {p.id: p.resolve_file() is not None for p in cfg.presets},
     }

@@ -193,6 +193,8 @@ function collect() {
   config.security.admin_pin = $("admin-pin").value.trim();
   config.tts.engine = $("tts-engine").value;
   config.tts.voice = $("tts-voice").value.trim();
+  const pm = $("tts-piper-model");
+  if (pm.options.length) config.tts.piper_model = pm.value;
   return config;
 }
 
@@ -239,6 +241,18 @@ async function init() {
     $("admin-pin").value = config.security.admin_pin;
     $("tts-engine").value = config.tts.engine;
     $("tts-voice").value = config.tts.voice;
+    if (data.piper_models.length) {
+      const sel = $("tts-piper-model");
+      sel.innerHTML = '<option value="">auto (first model found)</option>';
+      for (const m of data.piper_models) {
+        const o = document.createElement("option");
+        o.value = m;
+        o.textContent = m.split("/").pop().replace(".onnx", "");
+        sel.appendChild(o);
+      }
+      sel.value = data.piper_models.includes(config.tts.piper_model) ? config.tts.piper_model : "";
+      $("piper-voice-wrap").style.display = "";
+    }
     if (!data.engines.length) {
       showToast("No TTS engine on server — install piper or use recordings", true);
     }
