@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 RUN pip install --no-cache-dir piper-tts \
     && mkdir -p /holler/voices \
-    && python -m piper.download_voices --data-dir /holler/voices en_US-lessac-medium
+    && python -m piper.download_voices --download-dir /holler/voices en_US-lessac-medium
 ENV HOLLER_PIPER_MODEL=/holler/voices/en_US-lessac-medium.onnx
 
 COPY app ./app

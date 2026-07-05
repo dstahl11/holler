@@ -14,3 +14,4 @@ audio/*
 !audio/.gitkeep
 
 .playwright-mcp/
+voices/

@@ -1,7 +1,7 @@
 {
   "name": "Holler",
   "short_name": "Holler",
-  "description": "One tap: broadcast to the kid's speaker",
+  "description": "The Google Home broadcast app for families — one tap, loud, impossible to ignore",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#1a1023",

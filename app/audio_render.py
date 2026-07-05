@@ -13,6 +13,7 @@ import os
 import shutil
 import struct
 import subprocess
+import sys
 import tempfile
 import wave
 from pathlib import Path
@@ -88,14 +89,26 @@ def make_chime() -> list[int]:
 # ---- Speech engines -----------------------------------------------------
 
 def default_piper_model() -> str:
-    return os.environ.get("HOLLER_PIPER_MODEL", "")
+    env = os.environ.get("HOLLER_PIPER_MODEL", "")
+    if env:
+        return env
+    local = sorted((Path(__file__).resolve().parent.parent / "voices").glob("*.onnx"))
+    return str(local[0]) if local else ""
+
+
+def _piper_bin() -> str | None:
+    found = shutil.which("piper")
+    if found:
+        return found
+    venv_piper = Path(sys.executable).with_name("piper")  # same venv as the app
+    return str(venv_piper) if venv_piper.exists() else None
 
 
 def available_engines() -> list[str]:
     engines = []
     if shutil.which("say"):
         engines.append("say")
-    if shutil.which("piper"):
+    if _piper_bin():
         engines.append("piper")
     return engines
 
@@ -114,10 +127,13 @@ def _speak_piper(text: str, model: str, out: Path) -> None:
     model = model or default_piper_model()
     if not model:
         raise RenderError("piper engine needs a voice model (tts.piper_model)")
+    piper = _piper_bin()
+    if not piper:
+        raise RenderError("piper is not installed")
     with tempfile.TemporaryDirectory() as td:
         raw = Path(td) / "s.wav"
         subprocess.run(
-            ["piper", "--model", model, "--output_file", str(raw)],
+            [piper, "--model", model, "--output_file", str(raw)],
             input=text.encode(), check=True, capture_output=True,
         )
         _to_standard_wav(raw, out)

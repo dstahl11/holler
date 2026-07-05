@@ -1,8 +1,14 @@
 # Holler 📢
 
-One tap on a parent's phone → attention chime + spoken message on the kid's
-Google/Nest speaker, **forced loud**, interrupting whatever they're playing.
-One-way by design. LAN-only. No cloud, no accounts, no data leaves the house.
+**The Google Home broadcast app for families.**
+
+One tap on a parent's phone → attention chime + spoken message on the
+Google/Nest speakers you choose, **forced loud**, interrupting whatever's
+playing. Call the kids to dinner, get someone out of their room, announce
+"we're leaving in five" — and actually be heard over headphones-off music and
+closed doors, where Google's built-in broadcast (fixed, polite volume) gets
+ignored. One-way by design. LAN-only, self-hosted: no cloud, no accounts, no
+data leaves the house.
 
 | The app | Admin: speaker & volume | Admin: edit messages |
 |---|---|---|
