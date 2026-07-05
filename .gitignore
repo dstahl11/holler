@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+
+# Local family config — contains your kid's name, speaker IP/UUID, and PINs.
+# The committed template is presets.example.yaml.
+presets.yaml
+presets.yaml.bak
+presets.yaml.tmp
+
+# Rendered/recorded audio (spoken names, parent voice recordings)
+audio/*
+!audio/.gitkeep
+
+.playwright-mcp/

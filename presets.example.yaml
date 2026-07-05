@@ -1,0 +1,61 @@
+# Holler configuration — copy to presets.yaml and edit, or just run the app and
+# use the /admin page (scan for your speaker, edit messages, set volume/PINs).
+#
+#   cp presets.example.yaml presets.yaml
+
+device:
+  # Your speaker's IP — find it with `python scripts/discover.py` or the /admin
+  # scan button. Give it a DHCP reservation in your router so it never moves.
+  host: 192.168.1.50
+  # Optional but recommended (also from discovery):
+  uuid: ""
+  friendly_name: "Kid's room speaker"
+
+broadcast:
+  volume: 0.7         # 0.0–1.0, forced for the broadcast then restored
+  connect_timeout: 7  # seconds to reach the speaker before giving up
+  play_timeout: 25    # max seconds to wait for playback before restoring volume
+  retries: 1          # extra connect attempts after the first failure
+  advertise_host: ""  # LAN IP the speaker fetches audio from; auto-detected if empty
+
+security:
+  pin: ""             # e.g. "4321" to require a PIN in the app; empty disables
+  admin_pin: ""       # protects the /admin page; empty disables
+
+tts:
+  engine: auto        # auto | say | piper  (auto prefers audio/raw/ recordings)
+  voice: ""           # macOS `say` voice name, e.g. Samantha
+  piper_model: ""     # path to a piper .onnx voice model
+
+# Rendered audio lands in ./audio/<id>.wav (chime + phrase in one file).
+# Re-render after editing:  python scripts/render_audio.py  (or just Save in /admin)
+presets:
+  - id: dinner
+    label: "Dinner"
+    emoji: "🍽️"
+    tts: "Hey Sam — dinner's ready, come downstairs."
+
+  - id: come-talk
+    label: "Come talk"
+    emoji: "💬"
+    tts: "Sam, come out and talk to us for a sec, please."
+
+  - id: now
+    label: "Now"
+    emoji: "⚠️"
+    tts: "Sam, please come downstairs right now."
+
+  - id: heads-up
+    label: "Heads-up"
+    emoji: "⏰"
+    tts: "Sam, five minutes till dinner."
+
+  - id: come-down
+    label: "Come down"
+    emoji: "⬇️"
+    tts: "Sam, come downstairs."
+
+  - id: test
+    label: "Test"
+    emoji: "🔔"
+    tts: ""   # chime only — handy for the loudness test

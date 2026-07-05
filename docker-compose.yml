@@ -1,0 +1,15 @@
+services:
+  holler:
+    build: .
+    container_name: holler
+    restart: unless-stopped
+    # Host networking keeps the audio URL the speaker fetches pointing straight at
+    # the Docker host's LAN IP — no port-mapping/advertise_host gymnastics.
+    network_mode: host
+    environment:
+      - HOLLER_PORT=8000
+    volumes:
+      # Read-write so the /admin page can save config and render audio;
+      # your presets.yaml and audio live on the host, surviving rebuilds.
+      - ./presets.yaml:/holler/presets.yaml
+      - ./audio:/holler/audio

@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Holler admin</title>
+  <meta name="theme-color" content="#1a1023">
+  <link rel="icon" href="/icons/icon-192.png">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #1a1023; color: #f5f0fa;
+      padding: env(safe-area-inset-top) 0 120px;
+    }
+    header {
+      padding: 20px 20px 4px; display: flex; align-items: baseline; gap: 12px;
+    }
+    header h1 { font-size: 24px; }
+    header a { color: #ff9f43; text-decoration: none; font-size: 14px; margin-left: auto; }
+    main { padding: 8px 20px; max-width: 640px; margin: 0 auto; }
+    section {
+      background: #241733; border-radius: 18px; padding: 18px; margin-top: 16px;
+    }
+    section h2 { font-size: 15px; color: #b7a9cc; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 14px; }
+    label { display: block; font-size: 13px; color: #9a8fb0; margin: 12px 0 5px; }
+    input[type=text], input[type=tel], textarea, select {
+      width: 100%; background: #1a1023; color: #f5f0fa;
+      border: 1px solid #3a2a52; border-radius: 10px;
+      padding: 11px 12px; font-size: 16px; font-family: inherit;
+    }
+    textarea { resize: vertical; min-height: 58px; }
+    input:focus, textarea:focus, select:focus { outline: none; border-color: #ff9f43; }
+    button {
+      appearance: none; border: none; border-radius: 12px; cursor: pointer;
+      background: #3a2a52; color: #f5f0fa; padding: 11px 16px;
+      font-size: 15px; font-weight: 600; font-family: inherit;
+    }
+    button:active { opacity: 0.8; }
+    button.primary { background: #ff9f43; color: #1a1023; }
+    button.danger { background: transparent; color: #ff6b6b; padding: 11px 8px; }
+    button:disabled { opacity: 0.5; cursor: default; }
+    .row { display: flex; gap: 10px; align-items: center; }
+    .row > * { flex: 1; }
+    .row > .fixed { flex: 0 0 auto; }
+    .device-pick {
+      width: 100%; text-align: left; margin-top: 8px; background: #1a1023;
+      border: 1px solid #3a2a52; font-weight: 500; line-height: 1.4;
+    }
+    .device-pick.selected { border-color: #ff9f43; }
+    .device-pick small { color: #9a8fb0; display: block; font-weight: 400; }
+    .preset-card { border: 1px solid #3a2a52; border-radius: 14px; padding: 14px; margin-top: 12px; }
+    .preset-card .row { margin-bottom: 4px; }
+    .preset-actions { display: flex; gap: 8px; margin-top: 10px; align-items: center; flex-wrap: wrap; }
+    .preset-actions button { font-size: 13px; padding: 9px 12px; }
+    .badge { font-size: 12px; color: #9a8fb0; margin-left: auto; }
+    .badge.warn { color: #ff9f43; }
+    #volume-val { font-variant-numeric: tabular-nums; color: #ff9f43; font-weight: 700; }
+    input[type=range] { width: 100%; accent-color: #ff9f43; }
+    #savebar {
+      position: fixed; left: 0; right: 0; bottom: 0;
+      padding: 14px 20px calc(14px + env(safe-area-inset-bottom));
+      background: rgba(26, 16, 35, 0.92); backdrop-filter: blur(10px);
+      display: flex; gap: 10px; justify-content: center;
+    }
+    #savebar button { flex: 1; max-width: 640px; padding: 15px; font-size: 17px; }
+    #toast {
+      position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%) translateY(200%);
+      background: #f5f0fa; color: #1a1023; font-weight: 600; font-size: 15px;
+      padding: 12px 22px; border-radius: 100px;
+      transition: transform 0.25s ease, opacity 0.25s ease;
+      opacity: 0; pointer-events: none;
+      white-space: nowrap; z-index: 10; max-width: 90vw; overflow: hidden; text-overflow: ellipsis;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    #toast.error { background: #ff6b6b; color: #fff; }
+    .hint { font-size: 12.5px; color: #9a8fb0; margin-top: 8px; line-height: 1.45; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Holler admin</h1>
+    <a href="/">← back to buttons</a>
+  </header>
+
+  <main>
+    <section id="sec-device">
+      <h2>Speaker</h2>
+      <div class="row">
+        <button id="scan" class="fixed">🔍 Scan network</button>
+        <span id="scan-status" class="badge"></span>
+      </div>
+      <div id="devices"></div>
+      <label>IP address</label>
+      <input type="text" id="dev-host" placeholder="192.168.1.x" autocapitalize="off">
+      <label>Name</label>
+      <input type="text" id="dev-name" placeholder="Kid's room speaker">
+      <input type="hidden" id="dev-uuid">
+    </section>
+
+    <section>
+      <h2>Broadcast</h2>
+      <label>Volume during broadcast: <span id="volume-val"></span></label>
+      <input type="range" id="volume" min="0.3" max="1" step="0.05">
+      <p class="hint">The speaker is forced to this level for the message, then restored to whatever it was. Keep at 100% until the closed-door loudness test passes.</p>
+    </section>
+
+    <section>
+      <h2>Voice</h2>
+      <label>Engine</label>
+      <select id="tts-engine">
+        <option value="auto">Auto (recording if present, else installed TTS)</option>
+        <option value="say">macOS say</option>
+        <option value="piper">Piper (self-hosted neural)</option>
+      </select>
+      <label>Voice name (for macOS say — blank = system default)</label>
+      <input type="text" id="tts-voice" placeholder="Samantha">
+      <p class="hint">Best option: record the phrases in your own voice on your phone, drop them in <code>audio/raw/&lt;id&gt;.m4a</code>, and re-render — a real parent voice beats any TTS.</p>
+    </section>
+
+    <section>
+      <h2>Security</h2>
+      <label>App PIN (4 digits, blank = off)</label>
+      <input type="tel" id="pin" maxlength="4" placeholder="off">
+      <label>Admin PIN (protects this page, blank = off)</label>
+      <input type="tel" id="admin-pin" maxlength="8" placeholder="off">
+    </section>
+
+    <section>
+      <h2>Messages</h2>
+      <div id="presets"></div>
+      <div style="margin-top:14px">
+        <button id="add-preset">＋ Add message</button>
+      </div>
+      <p class="hint">After changing wording, Save re-renders the audio automatically. “Preview” plays the file in this browser; “Send” plays it on the speaker for real.</p>
+    </section>
+  </main>
+
+  <div id="savebar"><button id="save" class="primary">Save changes</button></div>
+  <div id="toast"></div>
+
+  <script src="/admin.js"></script>
+</body>
+</html>

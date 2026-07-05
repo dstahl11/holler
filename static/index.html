@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>Holler</title>
+  <meta name="theme-color" content="#1a1023">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <link rel="icon" href="/icons/icon-192.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Holler">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #1a1023;
+      color: #f5f0fa;
+      display: flex;
+      flex-direction: column;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    header {
+      padding: 20px 24px 8px;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+    }
+    header h1 { font-size: 28px; letter-spacing: -0.5px; }
+    header h1 span { color: #ff9f43; }
+    #status { font-size: 13px; color: #9a8fb0; }
+    header .right { display: flex; align-items: center; gap: 14px; }
+    header a.gear { color: #6f5f8a; text-decoration: none; font-size: 20px; }
+    #grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      padding: 16px 20px 28px;
+      align-content: start;
+    }
+    .preset {
+      appearance: none;
+      border: none;
+      border-radius: 22px;
+      background: #2c1f3d;
+      color: inherit;
+      min-height: 128px;
+      padding: 18px 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      font-size: 19px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.08s ease, background 0.15s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .preset .emoji { font-size: 40px; line-height: 1; }
+    .preset:active { transform: scale(0.95); background: #3a2a52; }
+    .preset.sending { background: #3a2a52; }
+    .preset.sent { background: #1e4d32; }
+    .preset.failed { background: #5c1f2a; }
+    .preset:disabled { opacity: 0.45; cursor: default; }
+    .preset .sub {
+      font-size: 12px;
+      font-weight: 500;
+      color: #b7a9cc;
+      min-height: 15px;
+    }
+    .preset.sent .sub, .preset.failed .sub { color: #f5f0fa; }
+    .spinner {
+      width: 22px; height: 22px;
+      border: 3px solid rgba(255,255,255,0.2);
+      border-top-color: #ff9f43;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #toast {
+      position: fixed;
+      left: 50%;
+      bottom: calc(24px + env(safe-area-inset-bottom));
+      transform: translateX(-50%) translateY(120%);
+      opacity: 0;
+      pointer-events: none;
+      background: #f5f0fa;
+      color: #1a1023;
+      font-weight: 600;
+      font-size: 15px;
+      padding: 12px 22px;
+      border-radius: 100px;
+      transition: transform 0.25s ease, opacity 0.25s ease;
+      white-space: nowrap;
+      z-index: 10;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    #toast.error { background: #ff6b6b; color: #fff; }
+    /* PIN overlay */
+    #pin-overlay {
+      position: fixed; inset: 0;
+      background: #1a1023;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      z-index: 20;
+    }
+    #pin-overlay.show { display: flex; }
+    #pin-overlay h2 { font-size: 20px; font-weight: 600; }
+    #pin-dots { display: flex; gap: 16px; height: 16px; }
+    #pin-dots i {
+      width: 14px; height: 14px; border-radius: 50%;
+      border: 2px solid #6f5f8a; display: block;
+    }
+    #pin-dots i.filled { background: #ff9f43; border-color: #ff9f43; }
+    #pin-pad {
+      display: grid;
+      grid-template-columns: repeat(3, 72px);
+      gap: 14px;
+    }
+    #pin-pad button {
+      appearance: none; border: none;
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      background: #2c1f3d;
+      color: #f5f0fa;
+      font-size: 26px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    #pin-pad button:active { background: #3a2a52; }
+    #pin-pad button.blank { background: transparent; cursor: default; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Holler<span>.</span></h1>
+    <div class="right">
+      <div id="status"></div>
+      <a class="gear" href="/admin" aria-label="Admin">⚙︎</a>
+    </div>
+  </header>
+  <main id="grid"></main>
+  <div id="toast"></div>
+
+  <div id="pin-overlay">
+    <h2>Enter PIN</h2>
+    <div id="pin-dots"><i></i><i></i><i></i><i></i></div>
+    <div id="pin-pad"></div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

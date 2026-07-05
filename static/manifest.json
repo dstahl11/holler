@@ -1,0 +1,13 @@
+{
+  "name": "Holler",
+  "short_name": "Holler",
+  "description": "One tap: broadcast to the kid's speaker",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1023",
+  "theme_color": "#1a1023",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
