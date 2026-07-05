@@ -17,3 +17,4 @@ audio/*
 voices/
 docker-compose.override.yml
 .env
+HANDOFF.md
